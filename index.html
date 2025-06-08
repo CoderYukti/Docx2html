@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DOCX to HTML Converter</title>
+
+  <!-- Mammoth.js -->
+  <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
+
+  <!-- js-beautify for HTML beautifying -->
+  <script src="https://cdn.jsdelivr.net/npm/js-beautify@1.14.7/js/lib/beautify-html.min.js"></script>
+  <!-- Prism.js CSS -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+  <!-- Prism.js Core & HTML language -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
+
+  <style>
+    /* Root styling */
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 40px 20px;
+      background: linear-gradient(to bottom right, #f4f6f9, #e9eef5);
+      color: #333;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: auto;
+      background: #fff;
+      padding: 40px;
+      border-radius: 14px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+      transition: all 0.3s ease-in-out;
+    }
+
+    h1 {
+      font-size: 2rem;
+      text-align: center;
+      margin-bottom: 30px;
+      color: #0056b3;
+      border-bottom: 2px dashed #cde;
+      padding-bottom: 10px;
+    }
+
+    h3 {
+      margin-top: 50px;
+      font-size: 1.3rem;
+      color: #444;
+      border-left: 5px solid #007bff;
+      padding-left: 10px;
+      margin-bottom: 10px;
+    }
+
+    textarea {
+      width: 100%;
+      height: 180px;
+      margin-top: 10px;
+      font-family: monospace;
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      background: #fdfdfd;
+      transition: border 0.3s;
+    }
+
+    textarea:focus {
+      border-color: #007bff;
+      outline: none;
+    }
+
+    iframe {
+      width: 100%;
+      height: 320px;
+      border: 1px solid #ddd;
+      margin-top: 10px;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    button,
+    label {
+      margin: 10px 5px 0 0;
+      padding: 10px 18px;
+      cursor: pointer;
+      background: linear-gradient(to right, #007bff, #0056b3);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-size: 1rem;
+      font-weight: 500;
+      transition: background 0.3s ease;
+    }
+
+    button:hover {
+      background: linear-gradient(to right, #0056b3, #003f7f);
+    }
+
+    label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.95rem;
+    }
+
+    .options {
+      margin: 10px 0 20px 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+
+    input[type="checkbox"] {
+      transform: scale(1.2);
+      margin: 0;
+    }
+
+    .drop-zone {
+      border: 2px dashed #007bff;
+      background: #f0f6ff;
+      padding: 40px;
+      text-align: center;
+      margin-bottom: 30px;
+      border-radius: 12px;
+      transition: all 0.3s ease-in-out;
+      position: relative;
+      color: #333;
+      font-size: 1.1rem;
+      font-weight: 500;
+    }
+
+    .drop-zone:hover {
+      background-color: #e4efff;
+      border-color: #0056b3;
+      box-shadow: 0 0 10px rgba(0, 123, 255, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .drop-zone input[type="file"] {
+      margin-top: 15px;
+      font-size: 0.95rem;
+      border: none;
+      background: #fff;
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      transition: background 0.3s ease;
+    }
+
+    .drop-zone input[type="file"]:hover {
+      background-color: #f7faff;
+    }
+
+    .custom-file-upload {
+      display: inline-block;
+      position: relative;
+      text-align: center;
+    }
+
+    .custom-file-upload input[type="file"] {
+      display: none;
+    }
+
+    .custom-file-upload label {
+      background-color: #007bff;
+      color: #fff;
+      padding: 12px 20px;
+      font-size: 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-block;
+      transition: background 0.3s ease, transform 0.2s ease;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    }
+
+    .custom-file-upload label:hover {
+      background-color: #0056b3;
+      transform: scale(1.02);
+    }
+
+    #file-name {
+      display: block;
+      margin-top: 10px;
+      color: #555;
+      font-style: italic;
+      font-size: 0.95rem;
+    }
+
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      border-bottom: 2px solid #007bff;
+      overflow-x: auto;
+      padding-bottom: 5px;
+      margin-top: 20px;
+      margin-bottom: 10px;
+      gap: 5px;
+      scrollbar-width: thin;
+    }
+
+    .tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      border: 1px solid #007bff;
+      border-bottom: none;
+      background: #e7f0ff;
+      border-radius: 8px 8px 0 0;
+      font-size: 0.95rem;
+      user-select: none;
+      transition: background 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .tab:hover {
+      background: #d4e6ff;
+    }
+
+    .tab.active {
+      background: #007bff;
+      color: white;
+      font-weight: 600;
+    }
+
+    /* Editor Area */
+    .css-editor-container {
+      margin-top: 10px;
+    }
+
+    .css-editor-container textarea {
+      height: 120px;
+      font-family: monospace;
+      font-size: 0.95rem;
+    }
+
+    pre {
+      max-height: 500px;
+      margin-top: 20px !important;
+    }
+
+    pre code {
+      font-family: 'Fira Code', monospace;
+      font-size: 14px;
+      padding: 20px;
+      border-radius: 10px;
+      overflow-x: auto;
+      background: #2d2d2d;
+      color: #ccc;
+    }
+
+
+    .text-tools h3 {
+      margin-bottom: 15px;
+      font-size: 20px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .text-tools .input {
+      width: 40%;
+      min-width: 200px;
+      padding: 10px;
+      margin-right: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+
+    .text-tools .btn {
+      padding: 10px 15px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .text-tools .btn-replace {
+      background-color: #007bff;
+      color: white;
+    }
+
+    .text-tools .btn-remove {
+      background-color: #dc3545;
+      color: white;
+    }
+
+
+    /* Responsive improvements */
+    @media screen and (max-width: 768px) {
+      .container {
+        padding: 20px;
+      }
+
+      button,
+      label {
+        font-size: 0.9rem;
+        padding: 8px 14px;
+      }
+
+      h1 {
+        font-size: 1.5rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>DOCX to HTML Converter</h1>
+
+    <div class="drop-zone" id="drop-zone">
+      <div style="font-size: 2.5rem; color: #007bff;">📄</div>
+      <strong>Drag & drop your .docx file here</strong><br>
+      <small>or click to upload</small><br><br>
+      <div class="custom-file-upload">
+        <label for="upload">📁 Choose .docx File</label>
+        <input type="file" id="upload" accept=".docx" />
+        <span id="file-name">No file selected</span>
+      </div>
+    </div>
+
+    <button id="copy-html">Copy HTML</button>
+    <button id="download-html">Download HTML</button>
+
+
+    <h3>Formatted HTML Output</h3>
+    <pre><code id="output-html" class="language-html"></code></pre>
+
+    <h3>Rendered Preview</h3>
+    <iframe id="preview"></iframe>
+
+    <h3>Tag CSS Editor</h3>
+    <div class="tabs" id="tag-tabs"></div>
+    <div class="css-editor-container" id="css-editor-container">
+      <textarea id="css-editor" placeholder="Write CSS for selected tag here..."></textarea>
+      <br />
+      <button id="apply-css">Apply CSS Inline</button>
+    </div>
+
+    <div class="text-tools">
+      <h3>Replace or Remove Text</h3>
+      <div>
+        <input type="text" class="input" id="findText" placeholder="Find text">
+        <input type="text" class="input" id="replaceText" placeholder="Replace with (optional)">
+      </div>
+      <button class="btn btn-replace" onclick="replaceText()">Replace Text</button>
+      <button class="btn btn-remove" onclick="removeText()">Remove Text</button>
+    </div>
+  </div>
+
+  <script>
+    const upload = document.getElementById("upload");
+    const dropZone = document.getElementById("drop-zone");
+    const fileNameDisplay = document.getElementById("file-name");
+    const outputHTML = document.querySelector("#output-html");
+    const preview = document.getElementById("preview");
+    const copyButton = document.getElementById("copy-html");
+
+    const tagTabs = document.getElementById("tag-tabs");
+    const cssEditor = document.getElementById("css-editor");
+    const applyCssBtn = document.getElementById("apply-css");
+
+    let currentHtml = "";
+    let tagsList = [];
+    let activeTag = null;
+    let cssPerTag = {};
+
+    function extractTags(html) {
+      const regex = /<\/?([a-z0-9]+)(\s|>)/gi;
+      let tags = new Set();
+      let match;
+      while ((match = regex.exec(html)) !== null) {
+        const tag = match[1]?.toLowerCase().trim();
+        if (tag) tags.add(tag);
+      }
+      return Array.from(tags).filter(tag => tag.length > 0).sort();
+    }
+
+    function createTabs(tags) {
+      tagTabs.innerHTML = "";
+      if (tags.length === 0) {
+        cssEditor.value = "";
+        cssEditor.disabled = true;
+        applyCssBtn.disabled = true;
+        return;
+      }
+      cssEditor.disabled = false;
+      applyCssBtn.disabled = false;
+
+      tags.forEach(tag => {
+        const tab = document.createElement("div");
+        tab.classList.add("tab");
+        tab.textContent = tag;
+        tab.dataset.tag = tag;
+        tab.addEventListener("click", () => {
+          setActiveTag(tag);
+        });
+        tagTabs.appendChild(tab);
+      });
+
+      setActiveTag(tags[0]);
+    }
+
+    function setActiveTag(tag) {
+      activeTag = tag;
+      Array.from(tagTabs.children).forEach(tab => {
+        tab.classList.toggle("active", tab.dataset.tag === tag);
+      });
+      cssEditor.value = cssPerTag[tag] || "";
+    }
+
+
+    function replaceText() {
+      const findText = document.getElementById("findText").value;
+      const replaceText = document.getElementById("replaceText").value;
+
+      if (!findText) {
+        alert("Please enter the text you want to find.");
+        return;
+      }
+
+      const regex = new RegExp(findText, 'g');
+      currentHtml = currentHtml.replace(regex, replaceText);
+
+      updatePreview(currentHtml);
+      updateEscapedOutput();
+    }
+
+    function removeText() {
+      const findText = document.getElementById("findText").value.trim();
+
+      if (!findText) {
+        alert("Please enter the text you want to remove.");
+        return;
+      }
+
+      // Escape special characters (like [ ])
+      const escapedText = findText.replace(/[[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+
+      // Create a safe regex to match literal placeholder text (e.g., [h1])
+      const regex = new RegExp(escapedText, 'g');
+
+      // Replace the matching placeholder with an empty string
+      currentHtml = currentHtml.replace(regex, '');
+
+      // Update preview and formatted display
+      updatePreview(currentHtml);
+      updateEscapedOutput();
+    }
+
+
+    function updateEscapedOutput() {
+      const escaped = currentHtml
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+      outputHTML.innerHTML = escaped;
+      Prism.highlightElement(outputHTML);
+    }
+
+
+    function applyCustomCSS() {
+      if (!activeTag) return;
+      cssPerTag[activeTag] = cssEditor.value.trim();
+      let htmlContent = outputHTML.textContent;
+
+      const tagRegex = new RegExp(`<${activeTag}([^>]*)>`, 'gi');
+      htmlContent = htmlContent.replace(tagRegex, (match, attr) => {
+        const newCSS = cssPerTag[activeTag].replace(/\s*\n\s*/g, ' ').trim();
+        if (!newCSS) return match;
+
+        // Parse new CSS into object
+        const newStyles = Object.fromEntries(newCSS.split(';').filter(Boolean).map(rule => {
+          const [prop, value] = rule.split(':').map(s => s.trim());
+          return [prop, value];
+        }));
+
+        // Parse existing styles
+        const styleMatch = attr.match(/style\s*=\s*"([^"]*)"/i);
+        let mergedStyles = {};
+
+        if (styleMatch) {
+          const existingStyles = Object.fromEntries(styleMatch[1].split(';').filter(Boolean).map(rule => {
+            const [prop, value] = rule.split(':').map(s => s.trim());
+            return [prop, value];
+          }));
+          mergedStyles = { ...existingStyles, ...newStyles };
+        } else {
+          mergedStyles = newStyles;
+        }
+
+        // Build new style string
+        const styleString = Object.entries(mergedStyles).map(([prop, val]) => `${prop}: ${val}`).join('; ');
+
+        if (styleMatch) {
+          // Replace existing style attribute
+          return `<${activeTag}${attr.replace(styleMatch[0], `style="${styleString}"`)}>`;
+        } else {
+          // Add new style attribute
+          return `<${activeTag} style="${styleString}"${attr}>`;
+        }
+      });
+
+      currentHtml = htmlContent;
+      updatePreview(htmlContent);
+
+      // Escape and display updated HTML
+      const escaped = currentHtml
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+      outputHTML.innerHTML = escaped;
+      Prism.highlightElement(outputHTML);
+    }
+
+
+
+    function updatePreview(html) {
+      preview.srcdoc = html;
+    }
+
+
+    function handleFile(file) {
+      if (!file || file.type !== "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+        alert("Please upload a .docx file.");
+        return;
+      }
+
+      fileNameDisplay.textContent = file.name;
+
+      const reader = new FileReader();
+      reader.onload = function (event) {
+        const arrayBuffer = event.target.result;
+        mammoth.convertToHtml({ arrayBuffer }).then(result => {
+          let html = result.value;
+
+          const cleanStyle = true;
+          const seoMode = true;
+
+          if (cleanStyle) {
+            html = html.replace(/style="[^"]*"/g, "");
+            html = html.replace(/<o:p>|<\/o:p>/g, "");
+          }
+
+          html = html.replace(/<a[^>]*>\s*<\/a>/g, '');
+
+          if (seoMode) {
+            const metaTitle = html.match(/<p><strong>Meta Title:<\/strong>\s*(.*?)<\/p>/);
+            const metaDesc = html.match(/<p><strong>Meta Description:<\/strong>\s*(.*?)<\/p>/);
+            const slug = html.match(/<p><strong>URL Slug: <\/strong>\s*(.*?)<\/p>/);
+          }
+
+          html = html.replace(/<([a-z0-9]+)([^>]*)>\s*<\/\1>/gi, '');
+
+          const prettyHTML = html_beautify(html, {
+            indent_size: 2,
+            wrap_line_length: 80,
+            unformatted: []
+          });
+
+          outputHTML.textContent = prettyHTML;
+          Prism.highlightElement(outputHTML);
+          currentHtml = prettyHTML;
+
+          tagsList = extractTags(prettyHTML);
+          createTabs(tagsList);
+
+          updatePreview(prettyHTML);
+          localStorage.setItem("lastOutput", prettyHTML);
+        });
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    upload.addEventListener("change", e => handleFile(e.target.files[0]));
+    ["dragover", "drop"].forEach(eventName => {
+      dropZone.addEventListener(eventName, e => e.preventDefault());
+    });
+    dropZone.addEventListener("drop", e => handleFile(e.dataTransfer.files[0]));
+
+    copyButton.onclick = function () {
+      navigator.clipboard.writeText(outputHTML.value).then(() => alert("Copied!"));
+    };
+
+    function download(content, fileName, type) {
+      const blob = new Blob([content], { type });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    document.getElementById("download-html").onclick = () => download(outputHTML.value, "converted.html", "text/html");
+
+    applyCssBtn.addEventListener("click", applyCustomCSS);
+  </script>
+
+</body>
+
+</html>
