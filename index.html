@@ -253,6 +253,13 @@
       color: #ccc;
     }
 
+    pre.language-html,
+    code.language-html {
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-x: hidden;
+    }
+
 
     .text-tools h3 {
       margin-bottom: 15px;
@@ -431,26 +438,29 @@
     }
 
     function removeText() {
-      const findText = document.getElementById("findText").value.trim();
+      const findText = document.getElementById("findText").value;
 
       if (!findText) {
         alert("Please enter the text you want to remove.");
         return;
       }
 
-      // Escape special characters (like [ ])
-      const escapedText = findText.replace(/[[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+      // Escape special characters in the exact input (including spaces)
+      const escapedText = findText.replace(/[[\]{}()*+?.,\\^$|]/g, '\\$&');
 
-      // Create a safe regex to match literal placeholder text (e.g., [h1])
+      // Create a regex that matches the exact input (spaces included)
       const regex = new RegExp(escapedText, 'g');
 
-      // Replace the matching placeholder with an empty string
+      // Remove the matched pattern exactly as entered
       currentHtml = currentHtml.replace(regex, '');
 
-      // Update preview and formatted display
+      // Optional: Clean up excess spaces that may remain
+      currentHtml = currentHtml.replace(/\s{2,}/g, ' ').trim();
+
       updatePreview(currentHtml);
       updateEscapedOutput();
     }
+
 
 
     function updateEscapedOutput() {
@@ -524,13 +534,15 @@
       preview.srcdoc = html;
     }
 
-
+    let uploadedFileName = "converted";
     function handleFile(file) {
       if (!file || file.type !== "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
         alert("Please upload a .docx file.");
         return;
       }
 
+      // Extract name without extension
+      uploadedFileName = file.name.replace(/\.[^/.]+$/, "");
       fileNameDisplay.textContent = file.name;
 
       const reader = new FileReader();
@@ -563,9 +575,22 @@
             unformatted: []
           });
 
-          outputHTML.textContent = prettyHTML;
+          const wrappedHTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Document</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+${prettyHTML}
+</body>
+</html>`;
+
+          outputHTML.textContent = wrappedHTML;
           Prism.highlightElement(outputHTML);
-          currentHtml = prettyHTML;
+          currentHtml = wrappedHTML;
+
 
           tagsList = extractTags(prettyHTML);
           createTabs(tagsList);
@@ -584,7 +609,7 @@
     dropZone.addEventListener("drop", e => handleFile(e.dataTransfer.files[0]));
 
     copyButton.onclick = function () {
-      navigator.clipboard.writeText(outputHTML.value).then(() => alert("Copied!"));
+      navigator.clipboard.writeText(outputHTML.innerText).then(() => alert("Copied!"));
     };
 
     function download(content, fileName, type) {
@@ -597,7 +622,10 @@
       document.body.removeChild(link);
     }
 
-    document.getElementById("download-html").onclick = () => download(outputHTML.value, "converted.html", "text/html");
+    document.getElementById("download-html").onclick = () => {
+      const safeName = uploadedFileName || "converted";
+      download(outputHTML.innerText, `${safeName}.html`, "text/html");
+    };
 
     applyCssBtn.addEventListener("click", applyCustomCSS);
   </script>
